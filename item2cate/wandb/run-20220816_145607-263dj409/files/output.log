@@ -1,18 +1,0 @@
-  0%|          | 0/10000 [00:00<?, ?it/s]Traceback (most recent call last):
-  File "train.py", line 106, in <module>
-    main()
-  File "train.py", line 101, in main
-    results = trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
-  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/trainer.py", line 1409, in train
-    return inner_training_loop(
-  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/trainer.py", line 1625, in _inner_training_loop
-    for step, inputs in enumerate(epoch_iterator):
-  File "/home/jhju/.local/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 521, in __next__
-    data = self._next_data()
-  File "/home/jhju/.local/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 561, in _next_data
-    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
-  File "/home/jhju/.local/lib/python3.8/site-packages/torch/utils/data/_utils/fetch.py", line 52, in fetch
-    return self.collate_fn(data)
-  File "/tmp2/jhju/codes.customer.characteristics/item2cate/dataset_utils.py", line 95, in __call__
-    random.sample(range(1, 100), len(cate_name_label))
-NameError: name 'random' is not defined

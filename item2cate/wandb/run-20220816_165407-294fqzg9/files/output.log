@@ -1,98 +1,0 @@
-  0%|          | 0/1000 [00:00<?, ?it/s]/home/jhju/.local/lib/python3.8/site-packages/torch/nn/modules/module.py:990: UserWarning: Using non-full backward hooks on a Module that does not return a single Tensor or a tuple of Tensors is deprecated and will be removed in future versions. This hook will be missing some of the grad_output. Please use register_full_backward_hook to get the documented behavior.
-  warnings.warn("Using non-full backward hooks on a Module that does not return a "
-/home/jhju/.local/lib/python3.8/site-packages/torch/nn/modules/module.py:1025: UserWarning: Using a non-full backward hook when the forward contains multiple autograd Nodes is deprecated and will be removed in future versions. This hook will be missing some grad_input. Please use register_full_backward_hook to get the documented behavior.
-  warnings.warn("Using a non-full backward hook when the forward contains multiple autograd Nodes "
-tensor([381, 242], device='cuda:0')
-tensor([ 33, 687], device='cuda:0')
-  0%|          | 1/1000 [00:00<02:05,  7.95it/s]tensor([281, 242], device='cuda:0')
-tensor([268, 462], device='cuda:0')
-tensor([230, 678], device='cuda:0')
-tensor([602,  33], device='cuda:0')
-  0%|          | 3/1000 [00:00<01:34, 10.59it/s]tensor([198, 433], device='cuda:0')
-tensor([386,  33], device='cuda:0')
-tensor([198, 166], device='cuda:0')
-tensor([33, 33], device='cuda:0')
-  0%|          | 5/1000 [00:00<01:28, 11.30it/s]tensor([198, 433], device='cuda:0')
-tensor([175, 189], device='cuda:0')
-tensor([433, 433], device='cuda:0')
-tensor([709,  33], device='cuda:0')
-  1%|          | 7/1000 [00:00<01:25, 11.62it/s]tensor([198, 341], device='cuda:0')
-tensor([640, 141], device='cuda:0')
-tensor([ 33, 433], device='cuda:0')
-tensor([188,  10], device='cuda:0')
-  1%|          | 9/1000 [00:00<01:25, 11.63it/s]tensor([433, 433], device='cuda:0')
-tensor([325, 687], device='cuda:0')
-tensor([433, 198], device='cuda:0')
-tensor([479, 618], device='cuda:0')
-  1%|          | 11/1000 [00:00<01:25, 11.52it/s]tensor([33, 33], device='cuda:0')
-tensor([587, 687], device='cuda:0')
-tensor([433, 433], device='cuda:0')
-tensor([487, 420], device='cuda:0')
-  1%|▏         | 13/1000 [00:01<01:23, 11.87it/s]tensor([ 33, 198], device='cuda:0')
-tensor([386, 666], device='cuda:0')
-tensor([ 33, 198], device='cuda:0')
-tensor([490, 707], device='cuda:0')
-  2%|▏         | 15/1000 [00:01<01:22, 11.99it/s]tensor([196,  33], device='cuda:0')
-tensor([420,  33], device='cuda:0')
-tensor([433, 433], device='cuda:0')
-tensor([355, 532], device='cuda:0')
-  2%|▏         | 17/1000 [00:01<01:20, 12.18it/s]tensor([561,  33], device='cuda:0')
-tensor([200, 175], device='cuda:0')
-tensor([ 33, 687], device='cuda:0')
-tensor([687, 685], device='cuda:0')
-  2%|▏         | 19/1000 [00:01<01:20, 12.19it/s]tensor([33, 33], device='cuda:0')
-tensor([33, 45], device='cuda:0')
-tensor([33, 33], device='cuda:0')
-tensor([112, 106], device='cuda:0')
-  2%|▏         | 21/1000 [00:01<01:19, 12.32it/s]tensor([687,  33], device='cuda:0')
-tensor([ 33, 687], device='cuda:0')
-tensor([33, 33], device='cuda:0')
-tensor([667, 167], device='cuda:0')
-  2%|▏         | 23/1000 [00:01<01:19, 12.25it/s]tensor([33, 33], device='cuda:0')
-tensor([370, 386], device='cuda:0')
-tensor([33, 33], device='cuda:0')
-tensor([539, 106], device='cuda:0')
-  2%|▎         | 25/1000 [00:02<01:18, 12.45it/s]Traceback (most recent call last):
-  File "train.py", line 107, in <module>
-    main()
-  File "train.py", line 102, in main
-    results = trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
-  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/trainer.py", line 1409, in train
-    return inner_training_loop(
-  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/trainer.py", line 1651, in _inner_training_loop
-    tr_loss_step = self.training_step(model, inputs)
-  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/trainer.py", line 2345, in training_step
-    loss = self.compute_loss(model, inputs)
-  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/trainer.py", line 2377, in compute_loss
-    outputs = model(**inputs)
-  File "/home/jhju/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1102, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/tmp2/jhju/codes.customer.characteristics/item2cate/models.py", line 44, in forward
-    outputs = self.bert(
-  File "/home/jhju/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1102, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/models/bert/modeling_bert.py", line 1018, in forward
-    encoder_outputs = self.encoder(
-  File "/home/jhju/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1102, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/models/bert/modeling_bert.py", line 607, in forward
-    layer_outputs = layer_module(
-  File "/home/jhju/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1102, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/models/bert/modeling_bert.py", line 493, in forward
-    self_attention_outputs = self.attention(
-  File "/home/jhju/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1102, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/models/bert/modeling_bert.py", line 432, in forward
-    attention_output = self.output(self_outputs[0], hidden_states)
-  File "/home/jhju/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1102, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/models/bert/modeling_bert.py", line 383, in forward
-    hidden_states = self.dropout(hidden_states)
-  File "/home/jhju/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1102, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/home/jhju/.local/lib/python3.8/site-packages/torch/nn/modules/dropout.py", line 58, in forward
-    return F.dropout(input, self.p, self.training, self.inplace)
-  File "/home/jhju/.local/lib/python3.8/site-packages/torch/nn/functional.py", line 1169, in dropout
-    return _VF.dropout_(input, p, training) if inplace else _VF.dropout(input, p, training)
-KeyboardInterrupt
