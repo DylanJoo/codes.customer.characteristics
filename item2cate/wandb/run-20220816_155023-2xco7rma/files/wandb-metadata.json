@@ -1,0 +1,42 @@
+{
+    "os": "Linux-4.15.0-48-generic-x86_64-with-glibc2.29",
+    "python": "3.8.10",
+    "heartbeatAt": "2022-08-16T07:50:25.066592",
+    "startedAt": "2022-08-16T07:50:23.248962",
+    "docker": null,
+    "gpu": "Tesla M40",
+    "gpu_count": 1,
+    "cpu_count": 16,
+    "cuda": null,
+    "args": [
+        "--model_name_or_path",
+        "bert-base-chinese",
+        "--config_name",
+        "ckiplab/bert-base-chinese",
+        "--tokenizer_name",
+        "ckiplab/bert-base-chinese",
+        "--output_dir",
+        "checkpoints/item2cate.v0",
+        "--max_length",
+        "32",
+        "--per_device_train_batch_size",
+        "1",
+        "--max_steps",
+        "1000",
+        "--save_steps",
+        "500",
+        "--do_train"
+    ],
+    "state": "running",
+    "codePath": "item2cate/train.py",
+    "program": "train.py",
+    "git": {
+        "remote": "https://github.com/DylanJoo/codes.customer.characteristics.git",
+        "commit": "ccf3122a44a385ab874565beb4313361ad0bf491"
+    },
+    "email": "dylanjootw@gmail.com",
+    "root": "/tmp2/jhju/codes.customer.characteristics",
+    "host": "cfda3",
+    "username": "jhju",
+    "executable": "/usr/bin/python3"
+}

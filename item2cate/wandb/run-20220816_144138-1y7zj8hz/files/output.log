@@ -1,0 +1,21 @@
+  0%|          | 0/10000 [00:00<?, ?it/s][{'__index_level_0__': 50592, 'item_brand_name': '無法辨識_Unrecognizable', 'item_name': '尾數折讓', 'item_tag': '優惠活動/折扣/集點', 'item_tag_lbl': 33, 'store_brand_name': '天仁茗茶_Tenren'}, {'__index_level_0__': 31920, 'item_brand_name': '無法辨識_Unrecognizable', 'item_name': '(新)佳士達 5毫克', 'item_tag': '香菸', 'item_tag_lbl': 687, 'store_brand_name': '統一超商_7Eleven'}, {'__index_level_0__': 580, 'item_brand_name': '無法辨識_Unrecognizable', 'item_name': '12元護貝照', 'item_tag': '支付類型', 'item_tag_lbl': 268, 'store_brand_name': '無店家'}, {'__index_level_0__': 55747, 'item_brand_name': '無法辨識_Unrecognizable', 'item_name': '國小康軒新挑戰學習評量國語六上(109學年)', 'item_tag': '童書', 'item_tag_lbl': 462, 'store_brand_name': '金石堂網路書店_Kingstone'}, {'__index_level_0__': 79247, 'item_brand_name': '無法辨識_Unrecognizable', 'item_name': '物流費', 'item_tag': '運費', 'item_tag_lbl': 602, 'store_brand_name': '樂購蝦皮_Shopee'}, {'__index_level_0__': 4846, 'item_brand_name': '無法辨識_Unrecognizable', 'item_name': '折扣金額', 'item_tag': '優惠活動/折扣/集點', 'item_tag_lbl': 33, 'store_brand_name': '寶雅_Poya'}, {'__index_level_0__': 32692, 'item_brand_name': '無法辨識_Unrecognizable', 'item_name': '〔專案總額〕', 'item_tag': '無法分類', 'item_tag_lbl': 386, 'store_brand_name': '中華電信_Chunghwatelecom'}, {'__index_level_0__': 26032, 'item_brand_name': '無法辨識_Unrecognizable', 'item_name': '折扣', 'item_tag': '優惠活動/折扣/集點', 'item_tag_lbl': 33, 'store_brand_name': '50嵐_50Lan'}]
+/home/jhju/.local/lib/python3.8/site-packages/torch/nn/modules/module.py:990: UserWarning: Using non-full backward hooks on a Module that does not return a single Tensor or a tuple of Tensors is deprecated and will be removed in future versions. This hook will be missing some of the grad_output. Please use register_full_backward_hook to get the documented behavior.
+  warnings.warn("Using non-full backward hooks on a Module that does not return a "
+/home/jhju/.local/lib/python3.8/site-packages/torch/nn/modules/module.py:1025: UserWarning: Using a non-full backward hook when the forward contains multiple autograd Nodes is deprecated and will be removed in future versions. This hook will be missing some grad_input. Please use register_full_backward_hook to get the documented behavior.
+  warnings.warn("Using a non-full backward hook when the forward contains multiple autograd Nodes "
+Traceback (most recent call last):
+  File "train.py", line 111, in <module>
+    main()
+  File "train.py", line 106, in main
+    results = trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
+  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/trainer.py", line 1409, in train
+    return inner_training_loop(
+  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/trainer.py", line 1651, in _inner_training_loop
+    tr_loss_step = self.training_step(model, inputs)
+  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/trainer.py", line 2363, in training_step
+    loss.backward()
+  File "/home/jhju/.local/lib/python3.8/site-packages/torch/_tensor.py", line 307, in backward
+    torch.autograd.backward(self, gradient, retain_graph, create_graph, inputs=inputs)
+  File "/home/jhju/.local/lib/python3.8/site-packages/torch/autograd/__init__.py", line 154, in backward
+    Variable._execution_engine.run_backward(
+RuntimeError: CUDA error: CUBLAS_STATUS_NOT_INITIALIZED when calling `cublasCreate(handle)`

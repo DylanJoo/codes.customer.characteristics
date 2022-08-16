@@ -1,0 +1,26 @@
+  0%|          | 0/10000 [00:00<?, ?it/s]Traceback (most recent call last):
+  File "train.py", line 110, in <module>
+    main()
+  File "train.py", line 105, in main
+    results = trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
+  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/trainer.py", line 1409, in train
+    return inner_training_loop(
+  File "/home/jhju/.local/lib/python3.8/site-packages/transformers/trainer.py", line 1625, in _inner_training_loop
+    for step, inputs in enumerate(epoch_iterator):
+  File "/home/jhju/.local/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 521, in __next__
+    data = self._next_data()
+  File "/home/jhju/.local/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 561, in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+  File "/home/jhju/.local/lib/python3.8/site-packages/torch/utils/data/_utils/fetch.py", line 49, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/home/jhju/.local/lib/python3.8/site-packages/torch/utils/data/_utils/fetch.py", line 49, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/home/jhju/.local/lib/python3.8/site-packages/datasets/arrow_dataset.py", line 1842, in __getitem__
+    return self._getitem(
+  File "/home/jhju/.local/lib/python3.8/site-packages/datasets/arrow_dataset.py", line 1834, in _getitem
+    pa_subtable = query_table(self._data, key, indices=self._indices if self._indices is not None else None)
+  File "/home/jhju/.local/lib/python3.8/site-packages/datasets/formatting/formatting.py", line 462, in query_table
+    _check_valid_index_key(key, size)
+  File "/home/jhju/.local/lib/python3.8/site-packages/datasets/formatting/formatting.py", line 405, in _check_valid_index_key
+    raise IndexError(f"Invalid key: {key} is out of bounds for size {size}")
+IndexError: Invalid key: 50494 is out of bounds for size 0
