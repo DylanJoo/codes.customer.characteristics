@@ -24,7 +24,6 @@ class BertForProductClassification(BertPreTrainedModel):
         # custormizer item2cate
         self.num_aspects = kwargs.pop('num_aspects', 10)
         self.lbl2cate = self._load_lbl_mapping(kwargs.pop('category_mapping', None))
-
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -151,4 +150,3 @@ class BertForProductClassification(BertPreTrainedModel):
             predictions += batch_pred
 
         return predictions
-
