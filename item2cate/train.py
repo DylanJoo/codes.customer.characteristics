@@ -2,41 +2,29 @@ import sys
 import multiprocessing
 from dataclasses import dataclass, field
 from typing import Optional
-
+# hf's setting
 from transformers import (
-    AutoConfig,
-    AutoTokenizer,
-    TrainingArguments,
-    Trainer,
-    HfArgumentParser,
-    DefaultDataCollator,
-    DataCollatorForSeq2Seq,
+        HfArgumentParser,
+        TrainingArguments,
+        DefaultDataCollator,
+        Trainer,
 )
-from datasets import load_dataset, DatasetDict, concatenate_datasets
-from models import T5SSForNTR
-from trainers import T5VAETrainer
-from utils import random_masking
+# chinese nlp models
+from transformers import BertTokenizerFast, AutoConfig
+from models import BertForProductClassification
+from dataset_utils import get_dataset, get_textual_df, encode_item_tag, EInvoiceDataCollator
 
-import os
-os.environ["WANDB_DISABLED"] = "true"
-
-# Arguments: (1) Model arguments (2) DataTraining arguments (3)
 @dataclass
 class OurModelArguments:
     # Huggingface's original arguments
-    model_name_or_path: Optional[str] = field(default='t5-small')
-    model_type: Optional[str] = field(default='t5-small')
-    config_name: Optional[str] = field(default='t5-small')
-    tokenizer_name: Optional[str] = field(default='t5-small')
+    model_name_or_path: Optional[str] = field(default='ckiplab/bert-base-chinese')
+    model_type: Optional[str] = field(default='bert-base-chinese')
+    config_name: Optional[str] = field(default='ckiplab/bert-base-chinese')
+    tokenizer_name: Optional[str] = field(default='bert-base-chinese')
     cache_dir: Optional[str] = field(default=None)
     use_fast_tokenizer: bool = field(default=True)
     model_revision: str = field(default="main")
     use_auth_token: bool = field(default=False)
-    # Customized arguments
-    vae_latent_size: int = field(default=128)
-    vae_k: float = field(default=0.0025)
-    vae_x0: int = field(default=2500)
-    vae_annealing_fn: str = field(default='logistic')
 
 @dataclass
 class OurDataArguments:
@@ -45,7 +33,9 @@ class OurDataArguments:
     overwrite_cache: bool = field(default=False)
     validation_split_percentage: Optional[int] = field(default=5)
     preprocessing_num_workers: Optional[int] = field(default=None)
-    max_length: int = field(default=258)
+    max_length: int = field(default=32)
+    train_file: Optional[str] = field(default='../data/2022.aigo.full.data.sample.csv')
+    label_mapping_file: Optional[str] = field(default='category.mapping.tsv')
 
 @dataclass
 class OurTrainingArguments(TrainingArguments):
@@ -61,91 +51,51 @@ class OurTrainingArguments(TrainingArguments):
     per_device_eval_batch_size: int = field(default=8)
     logging_dir: Optional[str] = field(default='./logs')
     resume_from_checkpoint: Optional[str] = field(default=None)
+    remove_unused_columns: Optional[bool] = field(default=False)
 
 def main():
 
     # Parseing argument for huggingface packages
     parser = HfArgumentParser((OurModelArguments, OurDataArguments, OurTrainingArguments))
-    # model_args, data_args, training_args = parser.parse_args_into_datalcasses()
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         model_args, data_args, training_args = \
                 parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
-        # [CONCERN] Deprecated? or any parser issue.
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
-    # additional config and tokenizers
-    config_kwargs = {
-            "latent_size": model_args.vae_latent_size, 
-            "k": model_args.vae_k,
-            "x0": model_args.vae_x0,
-            "annealing_fn": model_args.vae_annealing_fn,
-            "output_hidden_states": True,
-    }
-    tokenizer_kwargs = {
-            "cache_dir": model_args.cache_dir, 
-            "use_fast": model_args.use_fast_tokenizer
-    }
+    ## Loading form hf dataset
+    """
+    Detail preprocessing in `dataset_utils`
+    """
+    train_df = get_textual_df(data_args.train_file)
+    train_df, num_labels = encode_item_tag(train_df)
+
+    train_dataset = get_dataset(train_df)
 
     # init
-    config = AutoConfig.from_pretrained(model_args.config_name)
-    config.update(config_kwargs)
-    tokenizer = AutoTokenizer.from_pretrained(model_args.tokenizer_name, **tokenizer_kwargs)
-    model = T5SSForNTR.from_pretrained(
-            pretrained_model_name_or_path=model_args.model_name_or_path,
+    tokenizer = BertTokenizerFast.from_pretrained("bert-base-chinese")
+    config_kwargs = {'num_labels': num_labels, 'output_hidden_states': True, }
+    config = AutoConfig.from_pretrained(model_args.config_name, **config_kwargs)
+    model_kwargs = {'num_aspects': 10, 'category_mapping': data_args.label_mapping_file}
+    model = BertForProductClassification.from_pretrained(
+            model_args.model_name_or_path, 
             config=config,
-            tokenizer=tokenizer
+            **model_kwargs
     )
 
-    # Dataset 
-    def prepare_dataset(examples, prompt=''):
-
-        source = [ex.split('\t')[0] for ex in examples['text']]
-        target = [ex.split('\t')[1] for ex in examples['text']]
-
-        # source tokenize
-        features = tokenizer(
-                [src + f"{prompt}" for src in source],
-                truncation=True,
-                max_length=data_args.max_length,
-        )
-
-        # target tokenize
-        labels = tokenizer(
-                target,
-                truncation=True,
-                max_length=data_args.max_length,
-        )
-
-        # merge together
-        features['labels'] = labels.input_ids
-
-        return features
-
-    ## Loading form hf dataset
-    train_ntr = load_dataset('text', data_files={'data/canard/train.ntr.seq2seq.tsv'})['train']
-
-    ## Preprocessing
-    train_ntr = train_ntr.map(
-            function=prepare_dataset, 
-            remove_columns=['text'],
-            num_proc=multiprocessing.cpu_count(),
-            load_from_cache_file=not data_args.overwrite_cache,
-            batched=True,
-    )
-
-    ## data collator
-    data_collator = DataCollatorForSeq2Seq(
+    # data collator
+    data_collator = EInvoiceDataCollator(
             tokenizer=tokenizer, 
             padding=True,
+            max_length = data_args.max_length,
             return_tensors='pt'
     )
 
     # Trainer
-    trainer = T5VAETrainer(
+    trainer = Trainer(
             model=model, 
             args=training_args,
-            train_dataset=train_ntr,
+            train_dataset=train_dataset,
             eval_dataset=None,
             data_collator=data_collator
     )

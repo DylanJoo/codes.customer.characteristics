@@ -1,249 +1,152 @@
-import random
 import torch
-from typing import Optional, Tuple, Union
-from transformers import T5ForConditionalGeneration, T5Config
-from transformers.models.t5.modeling_t5 import T5Stack
-from transformers.modeling_outputs import Seq2SeqLMOutput, BaseModelOutput
-from torch import nn
-from torch.nn import CrossEntropyLoss, CosineEmbeddingLoss
-from utils import kl_weight, kl_loss
-import copy
+import torch.nn as nn
+from dataclasses import dataclass
+from typing import List, Optional, Tuple, Union
+from transformers.modeling_outputs import SequenceClassifierOutput
+from transformers import BertPreTrainedModel, BertModel
+from torch.nn import CrossEntropyLoss
+# from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
-class T5SSForNTR(T5ForConditionalGeneration):
-    _keys_to_ignore_on_load_missing = [
-        r"encoder.embed_tokens.weight",
-        r"decoder.embed_tokens.weight",
-        r"lm_head.weight",
-    ]
-    _keys_to_ignore_on_load_unexpected = [
-        r"decoder.block.0.layer.1.EncDecAttention.relative_attention_bias.weight",
-    ]
+class BertForProductClassification(BertPreTrainedModel):
 
-    def __init__(self, config: T5Config, tokenizer=None):
-        super().__init__(config)
-        self.model_dim = config.d_model
-        ##
-        self.tokenizer = tokenizer
-        ###
+    def __init__(self, config, **kwargs):
+        super().__init__(config,)
+        self.num_labels = config.num_labels
+        self.config = config
 
-        self.shared = nn.Embedding(config.vocab_size, config.d_model)
+        self.bert = BertModel(config, add_pooling_layer=True)
+        classifier_dropout = (
+            config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
+        )
+        self.dropout = nn.Dropout(classifier_dropout)
+        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
 
-        encoder_config = copy.deepcopy(config)
-        encoder_config.is_decoder = False
-        encoder_config.use_cache = False
-        encoder_config.is_encoder_decoder = False
-        self.encoder = T5Stack(encoder_config, self.shared)
-
-        # ========== VAE setting ==========
-        hidden_factor = 1
-        self.latent_size = config.latent_size
-        self.hidden2mean = nn.Linear(encoder_config.d_model * hidden_factor, config.latent_size)
-        self.hidden2logv = nn.Linear(encoder_config.d_model * hidden_factor, config.latent_size)
-        self.latent2hidden = nn.Linear(config.latent_size, encoder_config.d_model * hidden_factor)
-        self.tokenizer = tokenizer
-        self.is_training = True
-        # ========== VAE setting ==========
-        assert self.config.k is not None, 'Need to specify k'
-        assert self.config.x0 is not None, 'Need to specify x0'
-        assert self.config.annealing_fn is not None, 'Need to specify annealing function'
-
-        decoder_config = copy.deepcopy(config)
-        decoder_config.is_decoder = True
-        decoder_config.is_encoder_decoder = False
-        decoder_config.num_layers = config.num_decoder_layers
-        self.decoder = T5Stack(decoder_config, self.shared)
-
-        self.lm_head = nn.Linear(config.d_model, config.vocab_size, bias=False)
-
+        # custormizer item2cate
+        self.num_aspects = kwargs.pop('num_aspects', 10)
+        self.lbl2cate = self._load_lbl_mapping(kwargs.pop('category_mapping', None))
         # Initialize weights and apply final processing
         self.post_init()
 
-        # Model parallel
-        self.model_parallel = False
-        self.device_map = None
+    def _load_lbl_mapping(self, path):
+        mapping = {}
+        with open(path, 'r') as f:
+            for line in f:
+                mapping[line.split('\t')[0]] = line.strip().split('\t')[1]
+        return mapping
 
     def forward(
         self,
-        input_ids: Optional[torch.LongTensor] = None,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        decoder_input_ids: Optional[torch.LongTensor] = None,
-        decoder_attention_mask: Optional[torch.BoolTensor] = None,
-        head_mask: Optional[torch.FloatTensor] = None,
-        decoder_head_mask: Optional[torch.FloatTensor] = None,
-        cross_attn_head_mask: Optional[torch.Tensor] = None,
-        encoder_outputs: Optional[Tuple[Tuple[torch.Tensor]]] = None,
-        past_key_values: Optional[Tuple[Tuple[torch.Tensor]]] = None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
-        decoder_inputs_embeds: Optional[torch.FloatTensor] = None,
-        labels: Optional[torch.LongTensor] = None,
-        use_cache: Optional[bool] = None,
+        input_ids: Optional[torch.Tensor] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        token_type_ids: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.Tensor] = None,
+        head_mask: Optional[torch.Tensor] = None,
+        inputs_embeds: Optional[torch.Tensor] = None,
+        labels: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
-        steps: int = None, 
-    ) -> Union[Tuple[torch.FloatTensor], Seq2SeqLMOutput]:
-        """
-        Add SVAE module at the end (before LM head)
-        To make the output ditribution wiht variety.
-        """
-        use_cache = use_cache if use_cache is not None else self.config.use_cache
+    ) -> Union[Tuple[torch.Tensor], SequenceClassifierOutput]:
+
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        # FutureWarning: head_mask was separated into two input args - head_mask, decoder_head_mask
-        if head_mask is not None and decoder_head_mask is None:
-            if self.config.num_layers == self.config.num_decoder_layers:
-                warnings.warn(__HEAD_MASK_WARNING_MSG, FutureWarning)
-                decoder_head_mask = head_mask
-
-        # Encode if needed (training, first prediction pass)
-        if encoder_outputs is None:
-            # Convert encoder inputs in embeddings if needed
-            encoder_outputs = self.encoder(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                inputs_embeds=inputs_embeds,
-                head_mask=head_mask,
-                output_attentions=output_attentions,
-                output_hidden_states=output_hidden_states,
-                return_dict=return_dict,
-            )
-        elif return_dict and not isinstance(encoder_outputs, BaseModelOutput):
-            encoder_outputs = BaseModelOutput(
-                last_hidden_state=encoder_outputs[0],
-                hidden_states=encoder_outputs[1] if len(encoder_outputs) > 1 else None,
-                attentions=encoder_outputs[2] if len(encoder_outputs) > 2 else None,
-            )
-
-        hidden_states = encoder_outputs[0]
-
-        if self.model_parallel:
-            torch.cuda.set_device(self.decoder.first_device)
-
-        if labels is not None and decoder_input_ids is None and decoder_inputs_embeds is None:
-            # get decoder inputs from shifting lm labels to the right
-            decoder_input_ids = self._shift_right(labels)
-
-            if self.is_training:
-                self.is_training = False
-                student_answers = self.generate(input_ids,)
-                self.is_training = True
-                decoder_input_ids_student = self._shift_right(student_answers)
-                decoder_input_ids_student.require_grad = True
-
-        # Set device for model parallelism
-        if self.model_parallel:
-            torch.cuda.set_device(self.decoder.first_device)
-            hidden_states = hidden_states.to(self.decoder.first_device)
-            if decoder_input_ids is not None:
-                decoder_input_ids = decoder_input_ids.to(self.decoder.first_device)
-            if attention_mask is not None:
-                attention_mask = attention_mask.to(self.decoder.first_device)
-            if decoder_attention_mask is not None:
-                decoder_attention_mask = decoder_attention_mask.to(self.decoder.first_device)
-
-        if self.is_training:
-            # Inference (Decode)
-            decoder_outputs = self.decoder(
-                input_ids=decoder_input_ids_student,
-                attention_mask=decoder_attention_mask,
-                inputs_embeds=decoder_inputs_embeds,
-                past_key_values=past_key_values,
-                encoder_hidden_states=hidden_states,
-                encoder_attention_mask=attention_mask,
-                head_mask=decoder_head_mask,
-                cross_attn_head_mask=cross_attn_head_mask,
-                use_cache=use_cache,
-                output_attentions=output_attentions,
-                output_hidden_states=output_hidden_states,
-                return_dict=return_dict,
-            )
-            sequence_output_student = decoder_outputs[0]
-
-        # Decode
-        decoder_outputs = self.decoder(
-            input_ids=decoder_input_ids,
-            attention_mask=decoder_attention_mask,
-            inputs_embeds=decoder_inputs_embeds,
-            past_key_values=past_key_values,
-            encoder_hidden_states=hidden_states,
-            encoder_attention_mask=attention_mask,
-            head_mask=decoder_head_mask,
-            cross_attn_head_mask=cross_attn_head_mask,
-            use_cache=use_cache,
+        outputs = self.bert(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
 
-        sequence_output = decoder_outputs[0]
+        # old sequence classification task
+        pooled_output = outputs[1]
+        pooled_output = self.dropout(pooled_output)
+        logits = self.classifier(pooled_output)
 
-        # Set device for model parallelism
-        if self.model_parallel:
-            torch.cuda.set_device(self.encoder.first_device)
-            self.lm_head = self.lm_head.to(self.encoder.first_device)
-            sequence_output = sequence_output.to(self.lm_head.weight.device)
-
-        if self.config.tie_word_embeddings:
-            # Rescale output before projecting on vocab
-            # See https://github.com/tensorflow/mesh/blob/fa19d69eafc9a482aff0b59ddd96b025c0cb207d/mesh_tensorflow/transformer/transformer.py#L586
-            sequence_output = sequence_output * (self.model_dim**-0.5)
-
-
-        # if self.is_training and random.uniform(0, 1) > 0.5:
-        #     # student learning
-        #     lm_logits = self.lm_head(sequence_output_student)
-        # else:
-        #     # teacher forcing
-        lm_logits = self.lm_head(sequence_output)
-
-
-        loss = 0
-        loss_ce = 0
-        loss_cosine = 0
-
+        loss = None
         if labels is not None:
-            # nll loss
-            loss_fct = CrossEntropyLoss(ignore_index=-100)
-            loss_ce = loss_fct(
-                    lm_logits.view(-1, lm_logits.size(-1)), 
-                    labels.view(-1)
-            )
+            if self.config.problem_type is None:
+                if self.num_labels == 1:
+                    self.config.problem_type = "regression"
+                elif self.num_labels > 1 and (labels.dtype == torch.long or labels.dtype == torch.int):
+                    self.config.problem_type = "single_label_classification"
+                else:
+                    self.config.problem_type = "multi_label_classification"
 
-            # cosine loss
-            loss_fct = CosineEmbeddingLoss()
-            loss_cosine = loss_fct(
-                    sequence_output_student.mean(1),
-                    sequence_output.mean(1),
-                    torch.ones(hidden_states.shape[0]).to(hidden_states.device)
-            )
-
-            w = kl_weight(self.config.annealing_fn, steps, self.config.k, self.config.x0)
-
-            loss = (1-w) * loss_ce + w * loss_cosine
-
-            if steps % 10 == 0:
-                print(f"NLL: {loss_ce*(1-w)} = {loss_ce} * {1-w}")
-                print(f"COS: {loss_cosine*w} = {loss_cosine} * {w} ")
-                with torch.no_grad():
-                    self.is_training = False
-                    temp = self.generate(input_ids=input_ids)
-                    self.is_training = True
-                    print(self.tokenizer.decode(temp[0], skip_special_tokens=True))
-                    labels_reformulate = [l for l in labels[0] if l != -100]
-                    print(self.tokenizer.decode(labels_reformulate, skip_special_tokens=True))
-
+            if self.config.problem_type == "regression":
+                loss_fct = MSELoss()
+                if self.num_labels == 1:
+                    loss = loss_fct(logits.squeeze(), labels.squeeze())
+                else:
+                    loss = loss_fct(logits, labels)
+            elif self.config.problem_type == "single_label_classification":
+                loss_fct = CrossEntropyLoss()
+                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+            elif self.config.problem_type == "multi_label_classification":
+                loss_fct = BCEWithLogitsLoss()
+                loss = loss_fct(logits, labels)
         if not return_dict:
-            output = (lm_logits,) + decoder_outputs[1:] + encoder_outputs
+            output = (logits,) + outputs[2:]
             return ((loss,) + output) if loss is not None else output
 
-        return Seq2SeqLMOutput(
+        return SequenceClassifierOutput(
             loss=loss,
-            logits=lm_logits,
-            past_key_values=decoder_outputs.past_key_values,
-            decoder_hidden_states=decoder_outputs.hidden_states,
-            decoder_attentions=decoder_outputs.attentions,
-            cross_attentions=decoder_outputs.cross_attentions,
-            encoder_last_hidden_state=encoder_outputs.last_hidden_state,
-            encoder_hidden_states=encoder_outputs.hidden_states,
-            encoder_attentions=encoder_outputs.attentions,
+            logits=logits,
+            hidden_states=outputs.hidden_states,
+            attentions=outputs.attentions,
         )
+
+    # for evaluation and infernece/predict only
+    def classify(
+        self, 
+        dataframe,
+        batch_size=64,
+        topk=10,
+        output_files=None
+    ):
+
+        # 0) Prerequisite
+        from model_utils import npmapping
+        predictions = []
+        softmax = nn.Softmax(dim=-1)
+
+        # 1) Preprare dataset (batch input would be a better choice)
+        from dataset_utils import get_dataset, EInvoiceDataCollator
+        eval_dataset = get_dataset(dataframe)
+        data_collator = EInvoiceDataCollator(
+                tokenizer=tokenizer,
+                padding=True,
+                max_length=64,
+                return_tensors='pt'
+        )
+        from torch.utils.data import DataLoader
+        eval_dataloader = DataLoader(
+                eval_dataset,
+                batch_size=batch_size,
+                shuffle=False,
+                collate_fn=data_collator
+        )
+
+        # batch prediction (classify)
+        for b, batch in enumerate(eval_dataloader):
+            for k in batch:
+                batch[k] = batch[k].to(self.device)
+
+            output = self.forward(**batch)
+            probs = softmax(output.logits).detach().cpu()
+
+            # get topk value and index
+            topk_prob, topk_cate_idx = torch.topk(probs, topk)
+            topk_cate = torchmapping(top_cate_idx, self.self.lbl2cate)
+            
+            # prerpare tuple list output
+            batch_pred = [(c, p) for c, p in \
+                    zip(topk_cate.reshape(-1), topk_prob.reshape(-1))]
+
+            predictions += batch_pred
+
+        return predictions
