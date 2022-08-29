@@ -11,7 +11,6 @@ class BertForProductClassification(BertPreTrainedModel):
 
     def __init__(self, config, **kwargs):
         super().__init__(config,)
-        # self.num_aspects = kwargs.pop('num_aspects')
         self.num_labels = config.num_labels
         self.config = config
 
@@ -22,8 +21,19 @@ class BertForProductClassification(BertPreTrainedModel):
         self.dropout = nn.Dropout(classifier_dropout)
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
 
+        # custormizer item2cate
+        self.num_aspects = kwargs.pop('num_aspects', 10)
+        self.lbl2cate = self._load_lbl_mapping(kwargs.pop('category_mapping', None))
+
         # Initialize weights and apply final processing
         self.post_init()
+
+    def _load_lbl_mapping(self, path):
+        mapping = {}
+        with open(path, 'r') as f:
+            for line in f:
+                mapping[line.split('\t')[0]] = line.strip().split('\t')[1]
+        return mapping
 
     def forward(
         self,
@@ -90,3 +100,55 @@ class BertForProductClassification(BertPreTrainedModel):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
         )
+
+    # for evaluation and infernece/predict only
+    def classify(
+        self, 
+        dataframe,
+        batch_size=64,
+        topk=10,
+        output_files=None
+    ):
+
+        # 0) Prerequisite
+        from model_utils import npmapping
+        predictions = []
+        softmax = nn.Softmax(dim=-1)
+
+        # 1) Preprare dataset (batch input would be a better choice)
+        from dataset_utils import get_dataset, EInvoiceDataCollator
+        eval_dataset = get_dataset(dataframe)
+        data_collator = EInvoiceDataCollator(
+                tokenizer=tokenizer,
+                padding=True,
+                max_length=64,
+                return_tensors='pt'
+        )
+        from torch.utils.data import DataLoader
+        eval_dataloader = DataLoader(
+                eval_dataset,
+                batch_size=batch_size,
+                shuffle=False,
+                collate_fn=data_collator
+        )
+
+        # batch prediction (classify)
+        for b, batch in enumerate(eval_dataloader):
+            for k in batch:
+                batch[k] = batch[k].to(self.device)
+
+            output = self.forward(**batch)
+            probs = softmax(output.logits).detach().cpu()
+
+            # get topk value and index
+            topk_prob, topk_cate_idx = torch.topk(probs, topk)
+            topk_cate = torchmapping(top_cate_idx, self.self.lbl2cate)
+            
+            # prerpare tuple list output
+            batch_pred = [(c, p) for c, p in \
+                    zip(topk_cate.reshape(-1), topk_prob.reshape(-1))]
+
+            predictions += batch_pred
+
+        return predictions
+

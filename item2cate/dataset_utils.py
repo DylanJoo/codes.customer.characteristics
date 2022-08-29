@@ -30,7 +30,7 @@ def encode_item_tag(df):
     df['item_tag_lbl'] = cate_labels
 
     ## output the mapping text files
-    with open("item2cate.mapping.tsv", 'w') as f:
+    with open("category.mapping.tsv", 'w') as f:
         for i, cate in enumerate(le.classes_):
             f.write(f"{i}\t{cate}\n")
 
@@ -42,7 +42,7 @@ def get_dataset(df):
     dataset = Dataset.from_pandas(df)
 
     def preprocessing(examples):
-        n = len(examples['item_tag_lbl'])
+        n = len(examples['item_name'])
         for i in range(n):
             examples['item_name'][i] = \
                     normalize_string(examples['item_name'][i], '[MASK]')
@@ -76,6 +76,7 @@ class EInvoiceDataCollator:
     pad_to_multiple_of: Optional[int] = None
     return_tensors: str = "pt"
     padding: Union[bool, str] = True
+    is_train[bool] = True
 
     def __call__(self, features: List[Dict[str, Any]]) -> Dict[str, Any]:
 
@@ -86,7 +87,6 @@ class EInvoiceDataCollator:
         output: labels [int] (encoded item tag labels)
         """
         item_name = [ft['item_name'] for ft in features]
-        cate_name_label = [ft['item_tag_lbl'] for ft in features]
 
         batch = self.tokenizer(
             item_name,
@@ -109,6 +109,8 @@ class EInvoiceDataCollator:
         # ]
 
         # labels
-        batch['labels'] = torch.tensor(cate_name_label).to(dtype=torch.long)
+        if is_train:
+            cate_name_label = [ft['item_tag_lbl'] for ft in features]
+            batch['labels'] = torch.tensor(cate_name_label).to(dtype=torch.long)
 
         return batch

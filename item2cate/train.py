@@ -35,6 +35,7 @@ class OurDataArguments:
     preprocessing_num_workers: Optional[int] = field(default=None)
     max_length: int = field(default=32)
     train_file: Optional[str] = field(default='../data/2022.aigo.full.data.sample.csv')
+    label_mapping_file: Optional[str] = field(default='category.mapping.tsv')
 
 @dataclass
 class OurTrainingArguments(TrainingArguments):
@@ -75,7 +76,7 @@ def main():
     tokenizer = BertTokenizerFast.from_pretrained("bert-base-chinese")
     config_kwargs = {'num_labels': num_labels, 'output_hidden_states': True, }
     config = AutoConfig.from_pretrained(model_args.config_name, **config_kwargs)
-    model_kwargs = {'num_aspects': 10}
+    model_kwargs = {'num_aspects': 10, 'category_mapping': data_args.label_mapping_file}
     model = BertForProductClassification.from_pretrained(
             model_args.model_name_or_path, 
             config=config,
