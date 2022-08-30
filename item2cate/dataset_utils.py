@@ -76,7 +76,7 @@ class EInvoiceDataCollator:
     pad_to_multiple_of: Optional[int] = None
     return_tensors: str = "pt"
     padding: Union[bool, str] = True
-    is_train[bool] = True
+    is_train: Union[bool] = True
 
     def __call__(self, features: List[Dict[str, Any]]) -> Dict[str, Any]:
 
