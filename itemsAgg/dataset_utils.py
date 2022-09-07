@@ -97,17 +97,6 @@ class EInvoiceDataCollator:
             return_tensors=self.return_tensors,
         )
 
-        """
-        # setting 1: 
-        ------
-        input: [CLS] <item_name> [SEP] <item_brand_name> <store_brand_name> [SEP]
-        output: labels [int] (encoded item tag labels)
-        """
-
-        # item_desc = [
-        #         f"{ft['item_brand_name']} {ft['store_brand_name']}" for ft in features
-        # ]
-
         # labels
         if self.is_train:
             cate_name_label = [ft['item_tag_lbl'] for ft in features]
