@@ -30,19 +30,19 @@ class BiasedModel(nn.Module):
         # print(torch.cat((cate, item).shape))
         x = self.fc(torch.cat((cate, item), dim = 1))
         # print(x.shape)
-        x = F.softmax(x)
+        # x = F.softmax(x, dim = 1)
         # x = self.fc2(x)
         # x=  F.relu(x)
         # x = self.fc3(x)
         # ones_ = torch.ones((self.K, self.K))
-        common_uk_ = F.softmax(self.common_uk)
+        # common_uk_ = F.softmax(self.common_uk, dim = 1)
         # print(x.shape)
 
-        u = torch.add(x, common_uk_)
-        u = F.softmax(u)
+        u = torch.add(x, self.common_uk)
+        u = F.softmax(u, dim = 1)
         # v_ = self.fc_v(ones_)
-        v_c_ = F.softmax(self.v_c)
-        v_i_ = F.softmax(self.v_i)
+        v_c_ = F.softmax(self.v_c, dim = 1)
+        v_i_ = F.softmax(self.v_i, dim = 1)
         # self.v.data = v_
         # r = self.fc_v(x)
         # with torch.no_grad():
@@ -51,7 +51,7 @@ class BiasedModel(nn.Module):
         # print(v_)
         # print(self.v.grad)
 
-        return x, common_uk_, u, v_c_, v_i_, torch.matmul(u, v_c_), torch.matmul(u, v_i_)
+        return x, self.common_uk, u, v_c_, v_i_, torch.matmul(u, v_c_), torch.matmul(u, v_i_)
         # return x, v_, 
 
 class CustomDataset(Dataset):
