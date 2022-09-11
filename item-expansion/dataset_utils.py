@@ -13,7 +13,7 @@ def normalize_string(string, sub='[UNK]'):
     except:
         return sub
 
-# 1) Extract textual info [AND] customer cluster (per user or per invoice)
+# 1) Extract textual info
 def get_textual_df(path):
     df = pd.read_csv(path)
     df = df.loc[:, ['item_name', 'item_tag', 'item_brand_name', 'store_brand_name']]
@@ -96,6 +96,17 @@ class EInvoiceDataCollator:
             pad_to_multiple_of=self.pad_to_multiple_of,
             return_tensors=self.return_tensors,
         )
+
+        """
+        # setting 1: 
+        ------
+        input: [CLS] <item_name> [SEP] <item_brand_name> <store_brand_name> [SEP]
+        output: labels [int] (encoded item tag labels)
+        """
+
+        # item_desc = [
+        #         f"{ft['item_brand_name']} {ft['store_brand_name']}" for ft in features
+        # ]
 
         # labels
         if self.is_train:
