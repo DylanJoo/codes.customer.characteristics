@@ -1,9 +1,10 @@
+import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import argparse
-from bias_model import biased_model, CustomDataset
+from bias_model import BiasedModel, CustomDataset
 import torch
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 
@@ -39,15 +40,15 @@ def plot_training(item_loss_list, cate_loss_list, const_loss_list):
     plt.plot(cate_loss_list, label = "category loss")
     plt.plot(const_loss_list, label = "constraint loss")
     plt.legend()
-    plt.savefig("./figures/training_loss.png")
+    plt.savefig(f"./{EXP}/figures/training_loss.png")
 
 def save_result(u_indivd,u_common, u_full, v_c, v_i, item_names, cate_names):
-    np.save("u_indivd.npy", u_indivd.data.numpy())
-    np.save("u_full.npy", u_full.data.numpy())
-    pd.DataFrame(v_c.data.numpy(), columns=cate_names).to_pickle("./results/v_category.pkl")
-    pd.DataFrame(v_i.data.numpy(), columns=item_names).to_pickle("./results/v_item.pkl")
+    np.save(f"./{EXP}/results/u_indivd.npy", u_indivd.data.numpy())
+    np.save(f"./{EXP}/results/u_full.npy", u_full.data.numpy())
+    pd.DataFrame(v_c.data.numpy(), columns=cate_names).to_pickle(f"./{EXP}/results/v_category.pkl")
+    pd.DataFrame(v_i.data.numpy(), columns=item_names).to_pickle(f"./{EXP}/results/v_item.pkl")
     
-def evaluate(model, input_cate, input_item):
+def evaluate(model_cpu, input_cate, input_item, item_names, cate_names):
     u_indivd,u_common, u_full, v_c, v_i, y_pred_cate, y_pred_item = model_cpu(torch.Tensor(input_cate),torch.Tensor(input_item))
     save_result(u_indivd,u_common, u_full, v_c, v_i, item_names, cate_names)
 
@@ -67,7 +68,7 @@ def main(args):
     n_items = train_item.shape[1]
     n_users = train_cate.shape[0]
     # T = train_data.shape[0]
-    factorize_model = biased_model(n_cates, n_items, K = k, bias=True)
+    factorize_model = BiasedModel(n_cates, n_items, K = k, bias=True)
     factorize_model.to(device)
 
     learning_rate = args.lr
@@ -111,9 +112,9 @@ def main(args):
         print(iter, f'cate:{batch_loss_cate}')
         print(iter, f'const:{batch_loss_const}')
     
-    torch.save(factorize_model.state_dict(), f"model_K{k}_batch{batch_size}.pt")
+    torch.save(factorize_model.state_dict(), f"{EXP}/checkpoints/model_K{k}_batch{batch_size}.pt")
     plot_training(item_loss_list, cate_loss_list, const_loss_list)
-    evaluate(factorize_model.to(device = "cpu"))
+    evaluate(factorize_model.to("cpu"), train_cate, train_item, item_names, cate_names)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -123,11 +124,16 @@ if __name__ == "__main__":
     # parser.add_argument('-matrix', '--path_user_item_monthly_matrix', type=str, default='input_matrix_2020.csv')
 
     # training arguments
-    parser.add_argument('-k','--n_k', type=int, default=20)
+    parser.add_argument('-k','--n_k', type=int, default=25)
     parser.add_argument('-bs','--batch_size', type=int, default=8)
-    parser.add_argument('-iters','--n_iters', type=int, default=10)
+    parser.add_argument('-iters','--n_iters', type=int, default=10000)
     parser.add_argument('-lr','--lr', type=float, default=0.01)
  
     args = parser.parse_args()
 
+    # makedir
+    EXP=f"K-{args.n_k}.BS-{args.batch_size}-{args.n_iters}"
+    os.makedirs(f'./{EXP}/figures', exist_ok=True)
+    os.makedirs(f'./{EXP}/results', exist_ok=True)
+    os.makedirs(f'./{EXP}/checkpoints', exist_ok=True)
     main(args)
