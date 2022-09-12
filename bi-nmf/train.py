@@ -30,9 +30,9 @@ def square_loss_func(y_pred, y_true):
     return (torch.sum(torch.square(y_pred - y_true)))
 
 
-def loss_constaint(item_cat, v_i, v_c):
+def loss_constaint(item_cat, v_i, v_c, alpha):
     wb = torch.matmul(v_i, torch.transpose(item_cat, 0, 1).to(dtype=torch.float32))
-    return (torch.sum(torch.square(wb - v_c)))
+    return alpha * (torch.sum(torch.square(wb - v_c)))
 
 def plot_training(item_loss_list, cate_loss_list, const_loss_list):
     plt.figure()
@@ -41,6 +41,10 @@ def plot_training(item_loss_list, cate_loss_list, const_loss_list):
     plt.plot(const_loss_list, label = "constraint loss")
     plt.legend()
     plt.savefig(f"./{EXP}/figures/training_loss.png")
+    np.save(f"./{EXP}/results/item_loss_list.npy", item_loss_list)
+    np.save(f"./{EXP}/results/cate_loss_list.npy", cate_loss_list)
+    np.save(f"./{EXP}/results/const_loss_list.npy", const_loss_list)
+    # np.save(f"./{EXP}/results/u_full.npy", u_full.data.numpy())
 
 def save_result(u_indivd,u_common, u_full, v_c, v_i, item_names, cate_names):
     np.save(f"./{EXP}/results/u_indivd.npy", u_indivd.data.numpy())
@@ -91,7 +95,7 @@ def main(args):
                 # l1_reg_fc = factorize_model.fc.weight.norm(1)
             loss_item = square_loss_func(y_pred_cate, x_c)
             loss_cate = square_loss_func(y_pred_item, x_i)
-            loss_const = loss_constaint(item_cat, v_i, v_c)
+            loss_const = loss_constaint(item_cat, v_i, v_c, args.alpha)
             # if not torch.equal(torch.matmul(v_i, torch.transpose(torch.tensor(item_cat), 0, 1).to(dtype=torch.float32)), v_c):
                 # loss = loss + 10000 
             loss = loss_item + loss_cate + loss_const
@@ -124,6 +128,7 @@ if __name__ == "__main__":
     # parser.add_argument('-matrix', '--path_user_item_monthly_matrix', type=str, default='input_matrix_2020.csv')
 
     # training arguments
+    parser.add_argument('-alpha', '--alpha', type = float, default = 1)
     parser.add_argument('-k','--n_k', type=int, default=25)
     parser.add_argument('-bs','--batch_size', type=int, default=8)
     parser.add_argument('-iters','--n_iters', type=int, default=10000)
