@@ -2,6 +2,12 @@
 data/2022.aigo.full.data.csv
 input_matrix_2020.csv
 
+# bi-nmf
+bi-nmf/*
+!bi-nmf/train.py
+!bi-nmf/run_exp.sh
+!bi-nmf/bais_model.py
+
 # others
 __pycache__/
 wandb/
