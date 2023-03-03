@@ -15,3 +15,11 @@ logs/
 checkpoints/
 *.swp
 *.pkl
+*.csv
+*.json
+
+# item mapping
+item-aggregation/item2cate.json
+item-aggregation/item2idf.csv
+item-aggregation/item2idf.json
+

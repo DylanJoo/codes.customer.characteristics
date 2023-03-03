@@ -137,7 +137,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # makedir
-    EXP=f"K-{args.n_k}.BS-{args.batch_size}-{args.n_iters}"
+    EXP=f"K-{args.n_k}.BS-{args.batch_size}.A-{args.alpha}"
     os.makedirs(f'./{EXP}/figures', exist_ok=True)
     os.makedirs(f'./{EXP}/results', exist_ok=True)
     os.makedirs(f'./{EXP}/checkpoints', exist_ok=True)

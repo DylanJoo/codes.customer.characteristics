@@ -14,9 +14,12 @@ def normalize_string(string, sub='[UNK]'):
         return sub
 
 # 1) Extract textual info [AND] customer cluster (per user or per invoice)
-def get_textual_df(path):
+def get_textual_df(path, users=False, inv=False):
     df = pd.read_csv(path)
-    df = df.loc[:, ['item_name', 'item_tag', 'item_brand_name', 'store_brand_name']]
+    selected_cols = ['item_name', 'item_tag', 'item_brand_name', 'store_brand_name'] 
+    selected_cols += ['user_id'] if users else []
+    selected_cols += ['inv_num'] if inv else []
+    df = df.loc[:, selected_cols]
     ## remove the item without name and brand name
     df = df[~ (df.item_tag.isna() & df.item_brand_name.isna())]
     ### Beside None, "無法辨識_Unrecognizable" 
